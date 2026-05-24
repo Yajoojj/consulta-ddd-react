@@ -1,56 +1,176 @@
-# Welcome to your Expo app 👋
+# Consulta de Localidades por DDD 📍
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicação mobile desenvolvida em **React Native** com **TypeScript** que permite consultar cidades por código de área (DDD) utilizando a [API Brasil API](https://brasilapi.com.br/docs#tag/DDD).
 
-## Get started
+## 🎯 Funcionalidades
 
-1. Install dependencies
+- ✅ **Busca por DDD**: Digite um código de área (2 dígitos) para consultar as cidades
+- ✅ **Validação de entrada**: Aceita apenas 2 dígitos numéricos
+- ✅ **Gerenciamento de estado**: Utilizando `useState` para controlar dados e `useEffect` para requisições
+- ✅ **Tipagem TypeScript**: 100% tipado sem uso de `any`
+- ✅ **Tratamento de erros**: Mensagens claras em caso de falha
+- ✅ **Interface responsiva**: Exibe estado (UF) e lista de cidades de forma clara
+- ✅ **Debounce**: Evita requisições excessivas durante digitação
 
-   ```bash
-   npm install
-   ```
+## 📋 Requisitos Implementados
 
-2. Start the app
+### 1. Interface
+- Campo de entrada para código DDD (exclusivamente 2 dígitos numéricos)
+- Botão para acionar a busca
+- Renderização clara do Estado (UF)
+- Lista completa de cidades associadas ao DDD
 
-   ```bash
-   npx expo start
-   ```
+### 2. Gerenciamento de Estado
+- `useState` para controlar: input, payload da API e status de carregamento
+- `useEffect` para lidar com chamadas assíncronas e gatilhos de requisição
+- Hook customizado `useDDDSearch` encapsulando toda lógica
 
-In the output, you'll find options to open the app in a
+### 3. Consumo de API
+- Requisição HTTP para: `https://brasilapi.com.br/api/ddd/v1/{ddd}`
+- Parâmetro de rota dinâmico baseado na entrada do usuário
+- Tratamento de erros e estados de carregamento
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### 4. Tipagem TypeScript
+- Interfaces `DDDResponse` e `DDDSearchState`
+- Zero uso de tipagem genérica (`any`)
+- Tipagem completa de hooks e componentes
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🚀 Como Executar
 
-## Get a fresh project
-
-When you're ready, run:
+### Instalação
 
 ```bash
-npm run reset-project
+# Clonar o repositório
+git clone <seu-repositorio>
+cd atv-yur-react
+
+# Instalar dependências
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Executar a aplicação
 
-### Other setup steps
+**No navegador (Web):**
+```bash
+npm run web
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+**Android:**
+```bash
+npx expo run:android
+```
 
-## Learn more
+**iOS:**
+```bash
+npx expo run:ios
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+**Expo Go (rápido):**
+```bash
+npx expo start
+# Escanear QR code com Expo Go
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 📐 Estrutura do Projeto
 
-## Join the community
+```
+src/
+├── app/
+│   ├── _layout.tsx              # Configuração de rotas
+│   ├── index.tsx                # Tela principal (Aplicação)
+│   └── explore.tsx              # Tela de exploração
+├── components/                  # Componentes reutilizáveis
+├── constants/
+│   └── theme.ts                 # Constantes de tema e espaçamento
+├── hooks/
+│   └── useDDDSearch.ts          # Hook customizado para busca de DDD
+├── types/
+│   └── api.ts                   # Interfaces TypeScript para a API
+└── globals.css                  # Estilos globais
+```
 
-Join our community of developers creating universal apps.
+## 🔍 Detalhes Técnicos
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Hook Customizado: `useDDDSearch`
+
+Localização: [src/hooks/useDDDSearch.ts](src/hooks/useDDDSearch.ts)
+
+```typescript
+const { loading, data, error } = useDDDSearch(dddCode);
+```
+
+**Funcionalidades:**
+- ✅ Validação de formato (exatamente 2 dígitos)
+- ✅ Requisição automática com debounce de 500ms
+- ✅ Tratamento de erros com mensagens descritivas
+- ✅ Estados: `loading`, `data` e `error`
+
+### Interfaces TypeScript
+
+Localização: [src/types/api.ts](src/types/api.ts)
+
+```typescript
+// Resposta da API
+export interface DDDResponse {
+  state: string;        // UF (ex: SP, RJ, MG)
+  area_code: string;    // Código DDD (ex: 11)
+  cities: string[];     // Lista de cidades
+}
+
+// Estado da aplicação
+export interface DDDSearchState {
+  dddCode: string;
+  loading: boolean;
+  data: DDDResponse | null;
+  error: string | null;
+}
+```
+
+### Componente Principal
+
+Localização: [src/app/index.tsx](src/app/index.tsx)
+
+**Fluxo:**
+1. Input captura digitação do usuário (validado para números)
+2. `useDDDSearch` é chamado com o código
+3. Hook faz debounce e requisição automática
+4. Resultados são renderizados em tempo real
+5. Tratamento de erros e estados de carregamento
+
+## 📱 Exemplo de Uso
+
+1. **Abra a aplicação**
+2. **Digite um DDD** (ex: "11" para São Paulo)
+3. **Aguarde ou clique em "Buscar"**
+4. **Veja os resultados:**
+   - Estado: SP
+   - Código DDD: 11
+   - Cidades: São Paulo, Guarulhos, Osasco, etc...
+
+## 🛠️ Stack Tecnológico
+
+| Tecnologia | Versão | Propósito |
+|-----------|--------|----------|
+| React Native | Latest | Framework mobile |
+| Expo | Latest | Plataforma de desenvolvimento |
+| TypeScript | Latest | Tipagem estática |
+| React | Latest | Biblioteca UI |
+
+## 🔗 API Utilizada
+
+**Brasil API - DDD**
+- Documentação: https://brasilapi.com.br/docs#tag/DDD
+- Endpoint: `GET /api/ddd/v1/{ddd}`
+- Resposta: `{ state, area_code, cities }`
+
+## 📝 Observações Importantes
+
+- ✅ Validação rigorosa de entrada (apenas 2 dígitos)
+- ✅ Debounce automático evita múltiplas requisições
+- ✅ Mensagens de erro descritivas
+- ✅ Estados de carregamento com spinner
+- ✅ Sem uso de tipagem genérica (`any`)
+
+## 📄 Licença
+
+MIT
