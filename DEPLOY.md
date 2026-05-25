@@ -16,6 +16,7 @@
 Após criar o repositório, copie o URL HTTPS (recomendado) ou SSH e execute:
 
 **Com HTTPS:**
+
 ```bash
 git remote add origin https://github.com/seu-usuario/atv-yur-react.git
 git branch -M main
@@ -23,6 +24,7 @@ git push -u origin main
 ```
 
 **Com SSH:**
+
 ```bash
 git remote add origin git@github.com:seu-usuario/atv-yur-react.git
 git branch -M main

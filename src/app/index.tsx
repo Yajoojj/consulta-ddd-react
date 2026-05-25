@@ -1,142 +1,250 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
+  Platform,
+  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import { useDDDSearch } from '@/hooks/useDDDSearch';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Spacing } from "@/constants/theme";
+import { useDDDSearch } from "@/hooks/useDDDSearch";
+import { useTheme } from "@/hooks/use-theme";
 
 export default function HomeScreen() {
-  const [dddInput, setDddInput] = useState<string>('');
-  const { loading, data, error } = useDDDSearch(dddInput);
+  const [dddInput, setDddInput] = useState<string>("");
+  const [submittedDdd, setSubmittedDdd] = useState<string>("");
+  const { loading, data, error } = useDDDSearch(submittedDdd);
+  const theme = useTheme();
+  const accentColor = "#0A84FF";
 
   const handleSearch = () => {
-    // A busca é feita automaticamente via hook quando o input muda
-    // Este botão é principalmente para UX - permite ao usuário acionar manualmente
+    setSubmittedDdd(dddInput);
+    Keyboard.dismiss();
   };
 
   const handleInputChange = (text: string) => {
-    // Aceita apenas números
-    const numericOnly = text.replace(/[^0-9]/g, '').slice(0, 2);
-    setDddInput(numericOnly);
+    if (/^\d*$/.test(text)) {
+      setDddInput(text);
+    }
   };
 
   const renderCityItem = ({ item }: { item: string }) => (
-    <View style={styles.cityItem}>
+    <View
+      style={[
+        styles.cityItem,
+        {
+          backgroundColor: theme.background,
+          borderColor: theme.backgroundSelected,
+        },
+      ]}
+    >
       <ThemedText>{item}</ThemedText>
     </View>
   );
 
+  const renderHeroCard = () => (
+    <View
+      style={[
+        styles.heroCard,
+        {
+          backgroundColor: theme.backgroundElement,
+        },
+      ]}
+    >
+      <ThemedText type="title" style={styles.title}>
+        Consulta de DDD
+      </ThemedText>
+      <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+        Digite um código com 2 dígitos para ver UF e cidades.
+      </ThemedText>
+    </View>
+  );
+
+  const renderFormCard = () => (
+    <View
+      style={[
+        styles.formCard,
+        {
+          backgroundColor: theme.backgroundElement,
+        },
+      ]}
+    >
+      <ThemedText themeColor="textSecondary" style={styles.label}>
+        Código DDD
+      </ThemedText>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            borderColor: theme.backgroundSelected,
+            backgroundColor: theme.background,
+            color: theme.text,
+          },
+        ]}
+        placeholder="Ex.: 11"
+        placeholderTextColor={theme.textSecondary}
+        keyboardType="number-pad"
+        maxLength={2}
+        value={dddInput}
+        onChangeText={handleInputChange}
+        onSubmitEditing={() => dddInput.length === 2 && handleSearch()}
+        editable={!loading}
+        returnKeyType="search"
+      />
+      <TouchableOpacity
+        style={[
+          styles.button,
+          { backgroundColor: accentColor },
+          (!dddInput || loading) && styles.buttonDisabled,
+        ]}
+        onPress={handleSearch}
+        disabled={loading || dddInput.length !== 2}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <ThemedText style={styles.buttonText}>Buscar</ThemedText>
+        )}
+      </TouchableOpacity>
+      <ThemedText themeColor="textSecondary" style={styles.helperText}>
+        Somente números. O botão ativa quando houver 2 dígitos.
+      </ThemedText>
+    </View>
+  );
+
+  const renderError = () =>
+    error ? (
+      <View
+        style={[
+          styles.errorContainer,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderLeftColor: "#E11D48",
+          },
+        ]}
+      >
+        <ThemedText style={[styles.errorText, { color: "#BE123C" }]}>
+          {error}
+        </ThemedText>
+      </View>
+    ) : null;
+
+  const renderResults = () =>
+    submittedDdd && !loading && data && !error ? (
+      <View
+        style={[
+          styles.resultsContainer,
+          {
+            backgroundColor: theme.backgroundElement,
+          },
+        ]}
+      >
+        <View style={styles.stateContainer}>
+          <ThemedText themeColor="textSecondary" style={styles.label}>
+            Estado (UF)
+          </ThemedText>
+          <ThemedText style={[styles.stateValue, { color: accentColor }]}>
+            {data.state}
+          </ThemedText>
+        </View>
+
+        <View style={styles.dddContainer}>
+          <ThemedText themeColor="textSecondary" style={styles.label}>
+            Código DDD
+          </ThemedText>
+          <ThemedText style={[styles.dddValue, { color: accentColor }]}>
+            {data.area_code}
+          </ThemedText>
+        </View>
+
+        <View style={styles.citiesContainer}>
+          <ThemedText themeColor="textSecondary" style={styles.label}>
+            Cidades ({data.cities.length})
+          </ThemedText>
+          <FlatList
+            data={data.cities}
+            renderItem={renderCityItem}
+            keyExtractor={(item, index) => `${item}-${index}`}
+            scrollEnabled={false}
+            contentContainerStyle={styles.citiesList}
+          />
+        </View>
+      </View>
+    ) : null;
+
+  const renderEmpty = () =>
+    !submittedDdd && !data && !error && !loading ? (
+      <View style={styles.emptyStateContainer}>
+        <ThemedText themeColor="textSecondary" style={styles.emptyStateText}>
+          Use o campo acima para pesquisar um DDD válido.
+        </ThemedText>
+      </View>
+    ) : null;
+
+  const renderLoading = () =>
+    loading ? (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={accentColor} />
+        <ThemedText themeColor="textSecondary" style={styles.loadingText}>
+          Buscando informações...
+        </ThemedText>
+      </View>
+    ) : null;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Cabeçalho */}
-        <View style={styles.header}>
-          <ThemedText type="title" style={styles.title}>
-            Consulta de Localidades
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Busque cidades por código DDD
-          </ThemedText>
-        </View>
-
-        {/* Campo de entrada */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite o DDD (ex: 11)"
-            placeholderTextColor="#999"
-            keyboardType="numeric"
-            maxLength={2}
-            value={dddInput}
-            onChangeText={handleInputChange}
-            editable={!loading}
-          />
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSearch}
-            disabled={loading || !dddInput}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.buttonText}>Buscar</ThemedText>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Mensagem de erro */}
-        {error && (
-          <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            {renderHeroCard()}
+            {renderFormCard()}
+            {renderError()}
+            {renderResults()}
+            {renderEmpty()}
+            {renderLoading()}
           </View>
-        )}
-
-        {/* Resultados */}
-        {data && !error && (
-          <View style={styles.resultsContainer}>
-            {/* Estado (UF) */}
-            <View style={styles.stateContainer}>
-              <ThemedText style={styles.label}>Estado (UF):</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.stateValue}>
-                {data.state}
-              </ThemedText>
-            </View>
-
-            {/* Código DDD */}
-            <View style={styles.dddContainer}>
-              <ThemedText style={styles.label}>Código DDD:</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.dddValue}>
-                {data.area_code}
-              </ThemedText>
-            </View>
-
-            {/* Lista de cidades */}
-            <View style={styles.citiesContainer}>
-              <ThemedText style={styles.label}>
-                Cidades ({data.cities.length}):
-              </ThemedText>
-              <FlatList
-                data={data.cities}
-                renderItem={renderCityItem}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                scrollEnabled={false}
-                style={styles.citiesList}
-              />
-            </View>
-          </View>
-        )}
-
-        {/* Mensagem de estado inicial */}
-        {!data && !error && !loading && (
-          <View style={styles.emptyStateContainer}>
-            <ThemedText style={styles.emptyStateText}>
-              Digite um código DDD (2 dígitos) para consultar as cidades disponíveis
-            </ThemedText>
-          </View>
-        )}
-
-        {/* Estado de carregamento */}
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#999" />
-            <ThemedText style={styles.loadingText}>
-              Buscando informações...
-            </ThemedText>
-          </View>
-        )}
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
 }
+
+const cardShadow = Platform.select({
+  ios: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+  },
+  android: {
+    elevation: 6,
+  },
+  web: {},
+});
+
+const cardShadowSoft = Platform.select({
+  ios: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  android: {
+    elevation: 3,
+  },
+  web: {},
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -144,122 +252,141 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
   },
-  header: {
-    marginBottom: Spacing.four,
-    alignItems: 'center',
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    padding: Spacing.four,
+    gap: Spacing.four,
+  },
+  heroCard: {
+    padding: Spacing.four,
+    borderRadius: 24,
+    gap: Spacing.two,
+    ...cardShadow,
+  },
+  formCard: {
+    padding: Spacing.four,
+    borderRadius: 24,
+    gap: Spacing.two,
+    ...cardShadowSoft,
   },
   title: {
-    textAlign: 'center',
-    marginBottom: Spacing.one,
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -0.5,
   },
   subtitle: {
-    textAlign: 'center',
     fontSize: 14,
-    opacity: 0.7,
+    lineHeight: 20,
+    fontWeight: "500",
   },
-  inputContainer: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    marginBottom: Spacing.four,
+  label: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    fontWeight: "700",
   },
   input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    color: '#000',
+    borderWidth: 2,
+    borderRadius: 16,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    fontSize: 24,
+    letterSpacing: 4,
+    textAlign: "center",
+    fontWeight: "600",
   },
   button: {
-    backgroundColor: '#007AFF',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 80,
+    paddingVertical: Spacing.three,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  helperText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "500",
+    textAlign: "center",
   },
   errorContainer: {
-    backgroundColor: '#ffebee',
     borderLeftWidth: 4,
-    borderLeftColor: '#c62828',
     padding: Spacing.three,
-    borderRadius: Spacing.two,
-    marginBottom: Spacing.four,
+    borderRadius: 16,
+    ...cardShadowSoft,
   },
   errorText: {
-    color: '#c62828',
     fontSize: 14,
+    fontWeight: "600",
   },
   resultsContainer: {
+    padding: Spacing.four,
+    borderRadius: 24,
     gap: Spacing.three,
+    ...cardShadowSoft,
   },
   stateContainer: {
-    backgroundColor: '#f5f5f5',
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
+    gap: Spacing.one,
   },
   dddContainer: {
-    backgroundColor: '#f5f5f5',
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
+    gap: Spacing.one,
+  },
+  resultLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    fontWeight: "700",
+  },
+  stateValue: {
+    fontSize: 42,
+    lineHeight: 48,
+    fontWeight: "800",
+    marginTop: Spacing.one,
+  },
+  dddValue: {
+    fontSize: 20,
+    fontWeight: "700",
   },
   citiesContainer: {
     gap: Spacing.two,
   },
   citiesList: {
-    gap: Spacing.one,
+    gap: Spacing.two,
   },
   cityItem: {
-    backgroundColor: '#f5f5f5',
-    padding: Spacing.two,
-    borderRadius: Spacing.two,
-    borderLeftWidth: 3,
-    borderLeftColor: '#007AFF',
-  },
-  label: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginBottom: Spacing.one,
-  },
-  stateValue: {
-    fontSize: 24,
-    color: '#007AFF',
-  },
-  dddValue: {
-    fontSize: 20,
-    color: '#666',
+    padding: Spacing.three,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   emptyStateContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: Spacing.six,
     paddingHorizontal: Spacing.four,
+    justifyContent: "center",
   },
   emptyStateText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 16,
-    opacity: 0.6,
+    lineHeight: 24,
+    fontWeight: "500",
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: Spacing.six,
+    paddingHorizontal: Spacing.four,
+    justifyContent: "center",
+    alignItems: "center",
     gap: Spacing.two,
   },
   loadingText: {
-    opacity: 0.7,
+    fontSize: 16,
+    fontWeight: "500",
   },
 });

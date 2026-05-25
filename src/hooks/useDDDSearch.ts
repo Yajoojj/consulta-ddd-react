@@ -1,38 +1,24 @@
-import { useEffect, useState } from 'react';
-import { DDDResponse, DDDSearchState } from '@/types/api';
+import { useEffect, useState } from "react";
 
-/**
- * Hook customizado para buscar informações de DDD na API Brasil API
- * @param dddCode - Código DDD a ser buscado
- * @returns Estado da busca (loading, data, error)
- */
+import { DDDResponse, DDDSearchState } from "@/types/api";
+
 export function useDDDSearch(dddCode: string) {
-  const [state, setState] = useState<Omit<DDDSearchState, 'dddCode'>>({
+  const [state, setState] = useState<Omit<DDDSearchState, "dddCode">>({
     loading: false,
     data: null,
     error: null,
   });
 
+  const normalizedCode = dddCode.trim();
+  const isEmpty = normalizedCode === "";
+  const isValidCode = /^\d{2}$/.test(normalizedCode);
+
   useEffect(() => {
-    // Se o código estiver vazio, limpa o estado
-    if (!dddCode || dddCode.trim() === '') {
-      setState({
-        loading: false,
-        data: null,
-        error: null,
-      });
+    if (isEmpty || !isValidCode) {
       return;
     }
 
-    // Valida se é um código DDD válido (2 dígitos numéricos)
-    if (!/^\d{2}$/.test(dddCode)) {
-      setState({
-        loading: false,
-        data: null,
-        error: 'DDD deve conter exatamente 2 dígitos numéricos',
-      });
-      return;
-    }
+    let isActive = true;
 
     const fetchDDDData = async () => {
       setState({
@@ -42,33 +28,61 @@ export function useDDDSearch(dddCode: string) {
       });
 
       try {
-        const response = await fetch(`https://brasilapi.com.br/api/ddd/v1/${dddCode}`);
+        const response = await fetch(
+          `https://brasilapi.com.br/api/ddd/v1/${normalizedCode}`,
+        );
 
         if (!response.ok) {
           throw new Error(`Erro ao buscar DDD: ${response.status}`);
         }
 
         const data: DDDResponse = await response.json();
+
+        if (!isActive) {
+          return;
+        }
+
         setState({
           loading: false,
           data,
           error: null,
         });
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+        const errorMessage =
+          err instanceof Error ? err.message : "Erro desconhecido";
+
+        if (!isActive) {
+          return;
+        }
+
         setState({
           loading: false,
           data: null,
-          error: `Não foi possível encontrar dados para o DDD ${dddCode}. ${errorMessage}`,
+          error: `Não foi possível encontrar dados para o DDD ${normalizedCode}. ${errorMessage}`,
         });
       }
     };
 
-    // Debounce de 500ms para evitar muitas requisições
-    const timeoutId = setTimeout(fetchDDDData, 500);
+    const timeoutId = setTimeout(fetchDDDData, 350);
 
     return () => clearTimeout(timeoutId);
-  }, [dddCode]);
+  }, [normalizedCode, isEmpty, isValidCode]);
+
+  if (isEmpty) {
+    return {
+      loading: false,
+      data: null,
+      error: null,
+    };
+  }
+
+  if (!isValidCode) {
+    return {
+      loading: false,
+      data: null,
+      error: "DDD deve conter exatamente 2 dígitos numéricos",
+    };
+  }
 
   return state;
 }
